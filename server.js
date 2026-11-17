@@ -1,88 +1,68 @@
-import express from 'express';
+import express from "express";
+import cors from "cors";
+import morgan from "morgan";
 
-const app = express();-
+const app = express();
 
+app.use(cors());
+app.use(morgan("dev"));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-const products = [];
-
-app.listen(3000, () => {
-    console.log('Server is running on port http://localhost:3000');
+// Root route
+app.get("/", (req, res) => {
+  res.status(200).json({
+    status: "success",
+    message: "Welcome to Express Application API",
+    version: "1.0.0",
+  });
 });
 
-app.post('/products', (req, res) => {
-    const newproduct = req.body;
-
-    products.push(newproduct);
-
-    res.status(201).json({
-        message: 'Product created successfully',
-        data: newproduct
-    });
+// Health check endpoint
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    status: "healthy",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
 });
 
-app.get('/products', (req, res) => {
-    res.status(200).json({
-        message: 'Products retrieved successfully',
-        data: products
-    });
+// Sample API resource routes
+app.get("/api/v1/info", (req, res) => {
+  res.status(200).json({
+    app: "express-app",
+    environment: process.env.NODE_ENV || "development",
+    endpoints: [
+      { method: "GET", path: "/" },
+      { method: "GET", path: "/api/health" },
+      { method: "GET", path: "/api/v1/info" },
+    ],
+  });
 });
 
-app.get('/products/:id', (req, res) => {
-    const productId = parseInt(req.params.id);
-
-    const product = products.find(p => p.id === productId);
-
-    if (product) {
-        res.status(200).json({
-            message: 'Product retrieved successfully',
-            data: product
-        });
-    } else {
-        res.status(404).json({
-            message: 'Product not found'
-        });
-    }
+// 404 Handler
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Not Found",
+    message: `Cannot ${req.method} ${req.url}`,
+  });
 });
 
-app.put('/products/:id', (req, res) => {
-    const productId = parseInt(req.params.id);
-
-    const updatedProduct = req.body;
-
-    const productIndex = products.findIndex(p => p.id === productId);
-
-    if (productIndex !== -1) {
-        products[productIndex] = {
-            ...products[productIndex],
-            ...updatedProduct
-        };
-
-        res.status(200).json({
-            message: 'Product updated successfully',
-            data: products[productIndex]
-        });
-    } else {
-        res.status(404).json({
-            message: 'Product not found'
-        });
-    }
+// Error handling middleware
+app.use((err, req, res, next) => {
+  const status = err.status || 500;
+  res.status(status).json({
+    error: err.name || "Internal Server Error",
+    message: err.message || "An unexpected error occurred",
+  });
 });
 
-app.delete('/products/:id', (req, res) => {
-    const productId = parseInt(req.params.id);
+const PORT = process.env.PORT || 3000;
 
-    const productIndex = products.findIndex(p => p.id === productId);
+if (process.env.NODE_ENV !== "test" && !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
 
-    if (productIndex !== -1) {
-        products.splice(productIndex, 1);
-
-        res.status(200).json({
-            message: 'Product deleted successfully'
-        });
-    } else {
-        res.status(404).json({
-            message: 'Product not found'
-        });
-    }
-});
+export default app;
